@@ -2,6 +2,9 @@ import * as Option from "effect/Option";
 
 export type JoinPath = (first: string, ...segments: string[]) => string;
 
+/** Its own directory, so it never shares a userdata database with another install. */
+export const DESKTOP_BASE_DIR_NAME = ".spool";
+
 function normalizeConfiguredBaseDir(t3Home: Option.Option<string>): Option.Option<string> {
   if (Option.isNone(t3Home)) {
     return Option.none();
@@ -16,7 +19,7 @@ export function resolveDesktopBaseDir(input: {
   readonly t3Home: Option.Option<string>;
 }): string {
   return Option.getOrElse(normalizeConfiguredBaseDir(input.t3Home), () =>
-    input.joinPath(input.homeDirectory, ".t3"),
+    input.joinPath(input.homeDirectory, DESKTOP_BASE_DIR_NAME),
   );
 }
 

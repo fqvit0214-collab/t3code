@@ -5,6 +5,7 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 
 import * as DesktopEnvironment from "./DesktopEnvironment.ts";
+import { DESKTOP_BASE_DIR_NAME } from "./DesktopStatePaths.ts";
 import * as DesktopConfig from "./DesktopConfig.ts";
 
 const defaultInput = {
@@ -68,8 +69,8 @@ describe("DesktopEnvironment", () => {
       );
       const production = yield* makeEnvironment();
 
-      assert.equal(development.stateDir, "/Users/alice/.t3/dev");
-      assert.equal(production.stateDir, "/Users/alice/.t3/userdata");
+      assert.equal(development.stateDir, `/Users/alice/${DESKTOP_BASE_DIR_NAME}/dev`);
+      assert.equal(production.stateDir, `/Users/alice/${DESKTOP_BASE_DIR_NAME}/userdata`);
     }),
   );
 });
