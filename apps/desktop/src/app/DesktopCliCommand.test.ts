@@ -10,6 +10,7 @@ import * as Stream from "effect/Stream";
 import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
 
 import * as DesktopCliCommand from "./DesktopCliCommand.ts";
+import { DESKTOP_BASE_DIR_NAME } from "./DesktopStatePaths.ts";
 import * as DesktopCliShim from "./DesktopCliShim.ts";
 import * as DesktopEnvironment from "./DesktopEnvironment.ts";
 
@@ -42,7 +43,7 @@ const commandIn = (
   Effect.gen(function* () {
     const path = yield* Path.Path;
     const fs = yield* FileSystem.FileSystem;
-    const baseDir = input.baseDir ?? path.join(input.home, ".t3");
+    const baseDir = input.baseDir ?? path.join(input.home, DESKTOP_BASE_DIR_NAME);
     yield* fs.makeDirectory(path.join(baseDir, "userdata"), { recursive: true });
     const make = DesktopCliCommand.make.pipe(
       Effect.provideService(
@@ -113,9 +114,9 @@ it.layer(NodeServices.layer)("DesktopCliCommand", (it) => {
       expect((yield* command.state).installedPath).toBe(link);
       const installed = yield* command.install;
       expect(installed.installedPath).toBe(link);
-      expect(installed.launcherPath).toBe(path.join(home, ".t3", "bin", "t3"));
+      expect(installed.launcherPath).toBe(path.join(home, DESKTOP_BASE_DIR_NAME, "bin", "t3"));
       expect(installed.pathSetup).toEqual({ file: "~/.zshrc", added: false });
-      expect(yield* fs.readLink(link)).toBe(path.join(home, ".t3", "bin", "t3"));
+      expect(yield* fs.readLink(link)).toBe(path.join(home, DESKTOP_BASE_DIR_NAME, "bin", "t3"));
       expect((yield* command.install).installedPath).toBe(link);
 
       // Add to PATH appends one line, once, and keeps a final line with no newline intact.
@@ -134,7 +135,7 @@ it.layer(NodeServices.layer)("DesktopCliCommand", (it) => {
 
       expect((yield* command.uninstall).installedPath).toBeNull();
       expect(yield* fs.exists(link)).toBe(false);
-      expect(yield* fs.exists(path.join(home, ".t3", "bin", "t3"))).toBe(true);
+      expect(yield* fs.exists(path.join(home, DESKTOP_BASE_DIR_NAME, "bin", "t3"))).toBe(true);
       // Removed stays removed: first launch never installs again.
       yield* command.installOnFirstLaunch;
       expect(yield* fs.exists(link)).toBe(false);
@@ -151,7 +152,7 @@ it.layer(NodeServices.layer)("DesktopCliCommand", (it) => {
       // chosen another, so first launch leaves it to Settings, where Install still works.
       for (const left of ["userdata/desktop-settings.json", "bin/t3"]) {
         const upgradedHome = yield* fs.makeTempDirectoryScoped();
-        const leftFile = path.join(upgradedHome, ".t3", left);
+        const leftFile = path.join(upgradedHome, DESKTOP_BASE_DIR_NAME, left);
         yield* fs.makeDirectory(path.dirname(leftFile), { recursive: true });
         yield* fs.writeFileString(leftFile, `#!/bin/sh\n# ${DesktopCliShim.MARKER}\n`);
         const upgraded = yield* commandIn({ home: upgradedHome, env });
@@ -195,7 +196,7 @@ it.layer(NodeServices.layer)("DesktopCliCommand", (it) => {
         expect(yield* fs.exists(path.join(besideHome, "bin", "t3"))).toBe(false);
       }
 
-      const launcher = path.join(home, ".t3", "bin", "t3");
+      const launcher = path.join(home, DESKTOP_BASE_DIR_NAME, "bin", "t3");
       yield* fs.writeFileString(launcher, "npm's t3\n");
       env.PATH = path.dirname(launcher);
       expect(yield* command.state).toMatchObject({ onPath: false, shadowedBy: launcher });
@@ -285,7 +286,7 @@ it.layer(NodeServices.layer)("DesktopCliCommand", (it) => {
       // Its folder is already on PATH behind theirs; adding it again would change which t3 runs.
       yield* fs.makeDirectory(path.join(home, ".local", "bin"), { recursive: true });
       yield* fs.symlink(
-        path.join(home, ".t3", "bin", "t3"),
+        path.join(home, DESKTOP_BASE_DIR_NAME, "bin", "t3"),
         path.join(home, ".local", "bin", "t3"),
       );
       const behind = yield* command.state;
@@ -352,7 +353,7 @@ it.layer(NodeServices.layer)("DesktopCliCommand", (it) => {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
       const home = yield* fs.makeTempDirectoryScoped();
-      const launcher = path.join(home, ".t3", "bin", "t3");
+      const launcher = path.join(home, DESKTOP_BASE_DIR_NAME, "bin", "t3");
       env.PATH = [path.dirname(launcher), path.join(home, ".local", "bin")].join(":");
 
       const command = yield* commandIn({ home, env });
@@ -390,7 +391,11 @@ it.layer(NodeServices.layer)("DesktopCliCommand", (it) => {
 
       registry.failReads = false;
       const launcherDir = DesktopCliShim.launcherPath(
-        environmentFor(yield* Path.Path, { home, baseDir: `${home}/.t3`, platform: "win32" }),
+        environmentFor(yield* Path.Path, {
+          home,
+          baseDir: `${home}/${DESKTOP_BASE_DIR_NAME}`,
+          platform: "win32",
+        }),
       ).replace(/[\\/]t3\.cmd$/, "");
       yield* command.install;
       expect(registry.path).toBe(`${userPath};${launcherDir}`);
@@ -421,7 +426,11 @@ it.layer(NodeServices.layer)("DesktopCliCommand", (it) => {
       const home = yield* fs.makeTempDirectoryScoped();
       const launcherDir = path.dirname(
         DesktopCliShim.launcherPath(
-          environmentFor(path, { home, baseDir: path.join(home, ".t3"), platform: "win32" }),
+          environmentFor(path, {
+            home,
+            baseDir: path.join(home, DESKTOP_BASE_DIR_NAME),
+            platform: "win32",
+          }),
         ),
       );
       const userPath = `C:\\Tools;${launcherDir}`;
