@@ -307,6 +307,20 @@ import * as AgentSessionImporter from "./project/AgentSessionImporter.ts";
 import * as UsageLimitSources from "./usage/UsageLimitSources.ts";
 import { requestUrl } from "./requestUrl.ts";
 
+/** One answer for every channel a client of this server can send, from the server's own predicate. */
+const telemetryAnswersFor = (
+  env: Readonly<Record<string, string | undefined>>,
+  policy: Parameters<typeof RelayTracing.consentFor>[1],
+) => {
+  const consent = RelayTracing.consentFor(env, policy);
+  const relayTrace = consent.answer("relayTrace");
+  return {
+    relayTracingAllowed: relayTrace.allowed,
+    crashReportsAllowed: consent.allows("crashReport"),
+    ...(relayTrace.deniedBy === undefined ? {} : { telemetryDeniedBy: relayTrace.deniedBy }),
+  };
+};
+
 const CONFIG_DISCOVERY_TIMEOUT = Duration.seconds(5);
 const isProviderUploadFeedbackError = Schema.is(ProviderUploadFeedbackError);
 
@@ -1949,10 +1963,7 @@ export const layerWsRpc = (
                 }
               : {}),
             otlpLogsEnabled: config.otlpLogsUrl !== undefined,
-            relayTracingAllowed: RelayTracing.allowedFor(
-              hostEnvironment,
-              serverSettings.managedPolicy,
-            ),
+            ...telemetryAnswersFor(hostEnvironment, serverSettings.managedPolicy),
           },
           settings,
           ...(serverSettings.managedPolicy === undefined

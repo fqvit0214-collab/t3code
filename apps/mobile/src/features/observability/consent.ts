@@ -6,24 +6,32 @@ import {
 
 import { connectionTracesEnabled } from "./diagnosticsSetting";
 
-export interface HostTelemetryAnswer {
-  readonly relayTrace: boolean;
-  readonly crashReport: boolean;
-  readonly deniedBy: string | undefined;
-}
-
-let hostAnswer: HostTelemetryAnswer | undefined;
-
 /**
- * The host owns the managed policy and the server opt-out, which the phone cannot read.
- * Until it reports, every channel stays closed rather than send one last batch.
+ * `no-hosts` is not the same as `waiting`: a phone with no environment has nobody to wait for,
+ * so its own switches decide. A phone that has one holds everything until that host answers.
  */
-export function setHostTelemetryAnswer(answer: HostTelemetryAnswer | undefined): void {
-  hostAnswer = answer;
+export type HostTelemetryAnswer =
+  | { readonly kind: "no-hosts" }
+  | { readonly kind: "waiting" }
+  | {
+      readonly kind: "answered";
+      readonly relayTrace: boolean;
+      readonly crashReport: boolean;
+      readonly deniedBy: string | undefined;
+    };
+
+let hostAnswer: HostTelemetryAnswer = { kind: "waiting" };
+let applyAnswer: (() => void) | undefined;
+
+/** Crash reporting is configured once, so it must be reapplied when a host answers late. */
+export function onHostTelemetryAnswer(apply: () => void): void {
+  applyAnswer = apply;
 }
 
-export function hostTelemetryAnswer(): HostTelemetryAnswer | undefined {
-  return hostAnswer;
+export function setHostTelemetryAnswer(answer: HostTelemetryAnswer): void {
+  const changed = JSON.stringify(answer) !== JSON.stringify(hostAnswer);
+  hostAnswer = answer;
+  if (changed) applyAnswer?.();
 }
 
 let crashReportsPreference = false;
@@ -39,21 +47,19 @@ const localPreference = (channel: TelemetryChannel): boolean => {
 };
 
 const hostAllows = (answer: HostTelemetryAnswer, channel: TelemetryChannel): boolean => {
+  if (answer.kind === "no-hosts") return true;
+  if (answer.kind === "waiting") return false;
   if (channel === "relayTrace") return answer.relayTrace;
   if (channel === "crashReport") return answer.crashReport;
   return false;
 };
 
-/**
- * No host reports its answer yet, so a phone with none falls back to its own switches.
- * Once {@link setHostTelemetryAnswer} has a caller, an absent answer must deny instead.
- */
 export const mobileTelemetryConsent: TelemetryConsentService = makeTelemetryConsent((channel) => {
   const answer = hostAnswer;
   return {
-    policyDeniedBy: answer?.deniedBy,
-    answerPending: false,
-    environmentAllows: answer === undefined || hostAllows(answer, channel),
+    policyDeniedBy: answer.kind === "answered" ? answer.deniedBy : undefined,
+    answerPending: answer.kind === "waiting",
+    environmentAllows: hostAllows(answer, channel),
     preferenceAllows: localPreference(channel),
   };
 });

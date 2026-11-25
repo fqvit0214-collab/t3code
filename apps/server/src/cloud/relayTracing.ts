@@ -4,7 +4,6 @@ import {
   nodeProcessRuntimeAttributes,
   processServiceInstanceId,
 } from "@t3tools/shared/observability";
-import { isRelayTracingEnabled } from "@t3tools/shared/otelEnvironment";
 import * as RelayTracing from "@t3tools/shared/relayTracing";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -15,17 +14,20 @@ import { resolveRelayClientTracingConfig } from "./publicConfig.ts";
 
 const relayClientTracingConfig = resolveRelayClientTracingConfig();
 
-/**
- * `false` once the environment or a managed policy opted out. Until the desktop has read the
- * login shell, a shell-profile opt-out is still unknown, so tracing stays off.
- */
+/** The summary a client receives carries the same two fields the policy document denies by. */
+const summaryDeniedBy = (policy: ManagedPolicySummary | undefined) =>
+  policy?.limits?.telemetry === false ? policy.organization : undefined;
+
+/** The answer this server reports to its clients, from the same predicate its own sends use. */
 export const allowedFor = (
   env: Readonly<Record<string, string | undefined>>,
   policy: ManagedPolicySummary | undefined,
-) =>
-  policy?.limits?.telemetry !== false &&
-  env.T3CODE_DESKTOP_SHELL_DISCOVERY_PENDING !== "1" &&
-  isRelayTracingEnabled(env);
+) => consentFor(env, policy).allows("relayTrace");
+
+export const consentFor = (
+  env: Readonly<Record<string, string | undefined>>,
+  policy: ManagedPolicySummary | undefined,
+) => serverTelemetryConsent(() => summaryDeniedBy(policy), env);
 
 /** Relay traces leave the machine for T3 Connect, so a policy with `telemetry: false` stops them. */
 export const relayLayer = (
@@ -41,7 +43,7 @@ export const relayLayer = (
         ManagedPolicy.deniedBy(policy, "telemetry") === undefined ? tracingConfig : null,
         // Never the operator's own `service.instance.id`: it names their machine for their receiver.
         { ...resource, serviceInstanceId: processServiceInstanceId() },
-        serverTelemetryConsent(policy, environment),
+        serverTelemetryConsent(() => ManagedPolicy.deniedBy(policy, "telemetry"), environment),
       );
     }),
   );

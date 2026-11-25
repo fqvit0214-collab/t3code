@@ -7,6 +7,7 @@ import { vi } from "vite-plus/test";
 import { layerRemoteHttpClient } from "@t3tools/client-runtime/rpc";
 import { withRelayClientTracing } from "@t3tools/shared/relayTracing";
 
+import { setHostTelemetryAnswer } from "./consent";
 import { setConnectionTracesEnabled } from "./diagnosticsSetting";
 import * as Tracing from "./tracing";
 
@@ -34,6 +35,13 @@ const layerTracingTo = (fetchFn: typeof fetch) =>
 
 it.effect.each([false, true])("gates relay sends and preserves typed failures (%s)", (enabled) => {
   setConnectionTracesEnabled(enabled);
+  // The phone also needs its hosts to agree; host denial is covered in consent.test.ts.
+  setHostTelemetryAnswer({
+    kind: "answered",
+    relayTrace: true,
+    crashReport: true,
+    deniedBy: undefined,
+  });
   const fetchFn = vi.fn<typeof fetch>(async () => new Response(null, { status: 202 }));
   const layerTracing = layerTracingTo(fetchFn);
   const failure = { durationNanos: 1n };

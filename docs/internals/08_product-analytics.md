@@ -53,6 +53,10 @@ each channel that leaves the machine: product events, relay traces, mobile crash
 agent activity publishing. A managed policy beats the environment, the environment beats a user
 switch, and an unknown answer denies, so a source that has not answered yet cannot leak a batch.
 
+Clients get the host's answer from `ServerObservability` in the server config they already
+receive on connect, not from a channel of their own. The phone takes the strictest answer across
+its hosts and holds every channel until one of them answers.
+
 `relayTracing.layer` takes that answer as a **required** parameter. The gate used to be optional,
 and the hosted web app shipped without one for that reason: nothing in the type asked for it. A
 new channel that forgets the switch now fails to compile instead of sending.

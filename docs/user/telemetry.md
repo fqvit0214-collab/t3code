@@ -106,6 +106,11 @@ carry an identifier for the current app session. They are off until you turn on
 **Send connection traces** in **Settings > About T3 Code > Diagnostics**, or on the T3 Connect
 setup sheet shown after you sign in. This is separate from crash reports.
 
+Both switches need the servers you connect to agree. The app asks each one when it connects, and
+one server that says no stops that report everywhere, because the app has one crash reporter for
+all of them. Until a server answers, the app sends nothing. An app with no server set up has
+nobody to ask, so its own two switches decide.
+
 ## Agent activity for mobile notifications
 
 When **Publish agent activity** is enabled on a host, it sends project and thread titles, model

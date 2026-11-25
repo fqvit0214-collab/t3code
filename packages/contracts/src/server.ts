@@ -385,6 +385,10 @@ export const ServerObservability = Schema.Struct({
   otlpLogsEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
   /** Relay tracing policy for browsers opened from this server. */
   relayTracingAllowed: Schema.optionalKey(Schema.Boolean),
+  /** Crash reporting policy for mobile clients. Older servers omit it. */
+  crashReportsAllowed: Schema.optionalKey(Schema.Boolean),
+  /** The organization of the managed policy that denied the channels above. */
+  telemetryDeniedBy: Schema.optionalKey(Schema.String),
 });
 export type ServerObservability = typeof ServerObservability.Type;
 

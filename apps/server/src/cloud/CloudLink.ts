@@ -96,9 +96,7 @@ import { EnvironmentSigningKey } from "./environmentKeys.ts";
 import * as ConnectReachability from "./ConnectReachability.ts";
 import * as ManagedEndpointRuntime from "./ManagedEndpointRuntime.ts";
 import * as ManagedLimits from "../policy/managedLimits.ts";
-import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as ManagedPolicy from "../policy/ManagedPolicy.ts";
-import { serverTelemetryConsent } from "../telemetry/ServerTelemetryConsent.ts";
 import * as ServerSettings from "../serverSettings.ts";
 import { relayUrlConfig } from "./publicConfig.ts";
 import {
@@ -531,7 +529,6 @@ const make = Effect.gen(function* () {
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const managedPolicy = yield* ManagedPolicy.ManagedPolicy;
-  const hostEnvironment = yield* HostProcess.Environment;
 
   // Relay-signed text must not name a file directly; a digest is also a fixed, safe length.
   // Untraced: it runs twice per proof inside the health and mint spans.
@@ -1295,16 +1292,6 @@ const make = Effect.gen(function* () {
     return true;
   });
 
-  const hostTelemetryConsent = () => {
-    const consent = serverTelemetryConsent(managedPolicy, hostEnvironment);
-    const relayTrace = consent.answer("relayTrace");
-    return {
-      relayTrace: relayTrace.allowed,
-      crashReport: consent.allows("crashReport"),
-      ...(relayTrace.deniedBy === undefined ? {} : { deniedBy: relayTrace.deniedBy }),
-    };
-  };
-
   const readCloudLinkState = Effect.fn("environment.cloud.readLinkState")(function* () {
     const [
       cloudUserId,
@@ -1353,7 +1340,6 @@ const make = Effect.gen(function* () {
         Option.isSome(holdWebhooks) && bytesToString(holdWebhooks.value) === "true",
       ...(Option.isSome(currentReachability) ? { reachability: currentReachability.value } : {}),
       ...(connector?.hostname ? { tunnelHostname: connector.hostname } : {}),
-      telemetryConsent: hostTelemetryConsent(),
     } satisfies EnvironmentCloudLinkStateResult;
   });
 

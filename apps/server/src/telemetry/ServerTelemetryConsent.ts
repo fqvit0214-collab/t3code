@@ -5,10 +5,6 @@ import {
 } from "@t3tools/shared/telemetryConsent";
 import { isRelayTracingEnabled } from "@t3tools/shared/otelEnvironment";
 
-import * as ManagedPolicy from "../policy/ManagedPolicy.ts";
-
-type PolicyInput = Parameters<typeof ManagedPolicy.deniedBy>[0];
-
 export interface ServerTelemetryPreferences {
   readonly allows: (channel: TelemetryChannel) => boolean;
 }
@@ -34,12 +30,12 @@ const environmentAllowsChannel = (
  * rereads it: a cached PATH does not establish consent from the current login shell.
  */
 export function serverTelemetryConsent(
-  policy: PolicyInput | undefined,
+  policyDeniedBy: () => string | undefined,
   environment: Readonly<Record<string, string | undefined>>,
   preferences: ServerTelemetryPreferences = { allows: () => true },
 ): TelemetryConsentService {
   return makeTelemetryConsent((channel) => ({
-    policyDeniedBy: policy === undefined ? undefined : ManagedPolicy.deniedBy(policy, "telemetry"),
+    policyDeniedBy: policyDeniedBy(),
     answerPending: environment.T3CODE_DESKTOP_SHELL_DISCOVERY_PENDING === "1",
     environmentAllows: environmentAllowsChannel(channel, environment),
     preferenceAllows: preferences.allows(channel),

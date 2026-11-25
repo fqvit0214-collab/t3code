@@ -433,6 +433,11 @@ export const make = Effect.gen(function* () {
     yield* Effect.serviceOption(ManagedPolicy.ManagedPolicy),
   );
   const hostEnvironment = yield* HostProcess.Environment;
+  const telemetryConsent = serverTelemetryConsent(
+    () =>
+      managedPolicy === undefined ? undefined : ManagedPolicy.deniedBy(managedPolicy, "telemetry"),
+    hostEnvironment,
+  );
   const serverEnvironment = yield* ServerEnvironment.ServerEnvironment;
   const threads = yield* ThreadManagement.ThreadManagementService;
   const projects = yield* ProjectService.ProjectService;
@@ -470,10 +475,7 @@ export const make = Effect.gen(function* () {
   // Thread and project titles leave the machine here, so the telemetry opt-out stops it too.
   const readPublishAgentActivityEnabled = readSecretString(PUBLISH_AGENT_ACTIVITY_SECRET).pipe(
     Effect.map(isAgentActivityPublishingEnabledValue),
-    Effect.map(
-      (enabled) =>
-        enabled && serverTelemetryConsent(managedPolicy, hostEnvironment).allows("activity"),
-    ),
+    Effect.map((enabled) => enabled && telemetryConsent.allows("activity")),
   );
 
   const makeRelayClient = (relayConfig: {
