@@ -9,6 +9,8 @@ import * as Tracer from "effect/Tracer";
 import { FetchHttpClient } from "effect/http";
 import { vi } from "vite-plus/test";
 
+import { makeTelemetryConsent } from "./telemetryConsent.ts";
+
 import {
   layer,
   nonInterferingTracer,
@@ -115,7 +117,12 @@ it.effect.each([true, false])("filters relay exports at flush (%s)", (enabledAtF
       layer(
         { tracesUrl: "https://traces.example.com", tracesDataset: "relay", tracesToken: "token" },
         { serviceName: "t3code-test", runtime: "node", serviceInstanceId: "id", client: "test" },
-        { isEnabled: () => enabled },
+        makeTelemetryConsent(() => ({
+          policyDeniedBy: undefined,
+          answerPending: false,
+          environmentAllows: true,
+          preferenceAllows: enabled,
+        })),
       ),
     ),
     Layer.provide(FetchHttpClient.layer),

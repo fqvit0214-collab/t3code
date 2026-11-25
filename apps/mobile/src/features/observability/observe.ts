@@ -1,6 +1,8 @@
 import Constants from "expo-constants";
 import { Observe } from "expo-observe";
 
+import { mobileTelemetryConsent, setCrashReportsPreference } from "./consent";
+
 // Importing expo-observe installs its global JS error handler; reports leave only through the relay.
 const relayUrl: unknown = Constants.expoConfig?.extra?.relay?.url;
 const appVariant: unknown = Constants.expoConfig?.extra?.appVariant;
@@ -29,7 +31,9 @@ let latestConfiguration = 0;
 // Best effort: Observe skips the pass while it is backing off from a failed send.
 export async function setCrashReportsEnabled(enabled: boolean) {
   const configuration = ++latestConfiguration;
-  const dispatchingEnabled = crashReportingAvailable && enabled;
+  setCrashReportsPreference(enabled);
+  const dispatchingEnabled =
+    crashReportingAvailable && mobileTelemetryConsent.allows("crashReport");
   if (dispatchingEnabled) {
     await Observe.dispatchEvents();
     if (configuration !== latestConfiguration) return;
@@ -53,7 +57,7 @@ if (!crashReportingAvailable) {
       (preferences) =>
         changedSinceLoad()
           ? undefined
-          : setCrashReportsEnabled(preferences.crashReportsEnabled !== false),
+          : setCrashReportsEnabled(preferences.crashReportsEnabled === true),
       // Observe keeps the last choice it was given, which stands in for the unreadable one.
       (error: unknown) => console.warn("[observe] could not read the crash report setting", error),
     )

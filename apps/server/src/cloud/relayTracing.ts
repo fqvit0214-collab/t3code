@@ -10,6 +10,7 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 
 import * as ManagedPolicy from "../policy/ManagedPolicy.ts";
+import { serverTelemetryConsent } from "../telemetry/ServerTelemetryConsent.ts";
 import { resolveRelayClientTracingConfig } from "./publicConfig.ts";
 
 const relayClientTracingConfig = resolveRelayClientTracingConfig();
@@ -40,7 +41,7 @@ export const relayLayer = (
         ManagedPolicy.deniedBy(policy, "telemetry") === undefined ? tracingConfig : null,
         // Never the operator's own `service.instance.id`: it names their machine for their receiver.
         { ...resource, serviceInstanceId: processServiceInstanceId() },
-        { isEnabled: () => allowedFor(environment, undefined) },
+        serverTelemetryConsent(policy, environment),
       );
     }),
   );

@@ -3,12 +3,13 @@ import * as ConfigProvider from "effect/ConfigProvider";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
-import { identity } from "effect/Function";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Tracer from "effect/Tracer";
 import { HttpClient, HttpClientResponse } from "effect/http";
 import { OtlpSerialization, OtlpTracer } from "effect/observability";
+
+import type { TelemetryConsentService } from "./telemetryConsent.ts";
 
 export interface RelayClientTracingConfig {
   readonly tracesUrl: string;
@@ -166,11 +167,13 @@ function gatedTracer(delegate: Tracer.Tracer, isEnabled: () => boolean): Tracer.
 export function layer(
   config: RelayClientTracingConfig | null,
   resource: RelayClientTracingResource,
-  options?: { readonly isEnabled?: () => boolean },
+  consent: TelemetryConsentService,
 ): Layer.Layer<never, never, HttpClient.HttpClient> {
   if (config === null) {
     return Layer.succeed(RelayClientTracer, Option.none());
   }
+
+  const isEnabled = () => consent.allows("relayTrace");
 
   const layerTracer = OtlpTracer.layer({
     url: config.tracesUrl,
@@ -194,16 +197,14 @@ export function layer(
     Layer.provide(OtlpSerialization.layerJson),
     // An operator's OTEL_RESOURCE_ATTRIBUTES describe their machines for their own receiver.
     Layer.provide(ConfigProvider.layer(ConfigProvider.fromEnvRecord({}))),
-    options?.isEnabled ? Layer.provide(layerSendWhile(options.isEnabled)) : identity,
+    Layer.provide(layerSendWhile(isEnabled)),
   );
 
   return Layer.effect(
     RelayClientTracer,
     Tracer.Tracer.pipe(
       Effect.map(nonInterferingTracer),
-      Effect.map((tracer) =>
-        options?.isEnabled ? gatedTracer(tracer, options.isEnabled) : tracer,
-      ),
+      Effect.map((tracer) => gatedTracer(tracer, isEnabled)),
       Effect.asSome,
     ),
   ).pipe(Layer.provide(layerTracer));

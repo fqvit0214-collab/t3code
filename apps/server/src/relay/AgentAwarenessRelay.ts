@@ -21,6 +21,7 @@ import {
 } from "@t3tools/shared/agentAwareness";
 import { turnItemUpdateCanEndBackgroundWork } from "@t3tools/shared/orchestrationV2PendingBackgroundWork";
 import { makeDrainableWorker } from "@t3tools/shared/DrainableWorker";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 import { withRelayClientTracing } from "@t3tools/shared/relayTracing";
 import { normalizeRelayIssuer, RELAY_ACTIVITY_PUBLISH_TYP } from "@t3tools/shared/relayJwt";
 import * as Cause from "effect/Cause";
@@ -53,6 +54,8 @@ import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
 import * as ThreadManagement from "../orchestration-v2/ThreadManagementService.ts";
 import { isSnoozed } from "../orchestration-v2/ThreadSettlementService.ts";
 import * as ProjectService from "../project/ProjectService.ts";
+import * as ManagedPolicy from "../policy/ManagedPolicy.ts";
+import { serverTelemetryConsent } from "../telemetry/ServerTelemetryConsent.ts";
 import { forkParked } from "../serverActivation.ts";
 
 export class AgentAwarenessRelay extends Context.Service<
@@ -426,6 +429,10 @@ export function resolveAgentAwarenessRelayActiveThreadIds(input: {
 /** @public */
 export const make = Effect.gen(function* () {
   const secrets = yield* ServerSecretStore.ServerSecretStore;
+  const managedPolicy = Option.getOrUndefined(
+    yield* Effect.serviceOption(ManagedPolicy.ManagedPolicy),
+  );
+  const hostEnvironment = yield* HostProcess.Environment;
   const serverEnvironment = yield* ServerEnvironment.ServerEnvironment;
   const threads = yield* ThreadManagement.ThreadManagementService;
   const projects = yield* ProjectService.ProjectService;
@@ -460,8 +467,13 @@ export const make = Effect.gen(function* () {
       : null;
   });
 
+  // Thread and project titles leave the machine here, so the telemetry opt-out stops it too.
   const readPublishAgentActivityEnabled = readSecretString(PUBLISH_AGENT_ACTIVITY_SECRET).pipe(
     Effect.map(isAgentActivityPublishingEnabledValue),
+    Effect.map(
+      (enabled) =>
+        enabled && serverTelemetryConsent(managedPolicy, hostEnvironment).allows("activity"),
+    ),
   );
 
   const makeRelayClient = (relayConfig: {

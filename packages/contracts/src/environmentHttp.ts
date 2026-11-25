@@ -562,6 +562,18 @@ export const EnvironmentCloudLinkStateResult = Schema.Struct({
   tunnelHostname: Schema.optional(Schema.String),
   /** Whether this is the desktop app's own session, which may link from where it is. */
   linkableHere: Schema.optional(Schema.Boolean),
+  /**
+   * The host's answer for the channels a client sends. Older servers omit it, and a
+   * client that gets no answer sends nothing.
+   */
+  telemetryConsent: Schema.optional(
+    Schema.Struct({
+      relayTrace: Schema.Boolean,
+      crashReport: Schema.Boolean,
+      /** The organization of the managed policy that denied the channels. */
+      deniedBy: Schema.optional(Schema.String),
+    }),
+  ),
 });
 export type EnvironmentCloudLinkStateResult = typeof EnvironmentCloudLinkStateResult.Type;
 

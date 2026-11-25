@@ -1,6 +1,10 @@
 # Product usage data
 
-The T3 Code server sends product usage events to T3 Code's own endpoint at `ingest.t3.codes`,
+Product usage data is off until you turn it on. A new install, and a server you upgrade,
+send nothing to T3 until `T3CODE_TELEMETRY_ENABLED=true` is in the server's environment.
+The rest of this page describes what is sent once you do.
+
+When it is on, the T3 Code server sends product usage events to T3 Code's own endpoint at `ingest.t3.codes`,
 associated with a hashed random identifier for the installation. To count how many installations one person
 uses, the server also sends a hashed identifier for your T3 Connect account when you are signed in
 to one, and a random identifier for each device that connects. The endpoint keeps a copy of each
@@ -71,9 +75,10 @@ separate from product events. Traces carry connection timings, request paths, en
 thread identifiers, and error types. They omit machine addresses, query strings, log lines,
 error messages, and stack frames.
 
-To disable product events and relay tracing from the server, set
-`T3CODE_TELEMETRY_ENABLED=false` in its environment before starting it. Relay tracing also stops
-when `T3CODE_OTEL_SDK_DISABLED` or `OTEL_SDK_DISABLED` turns OpenTelemetry export off.
+To send product events and relay traces, set `T3CODE_TELEMETRY_ENABLED=true` in the server's
+environment before starting it; `T3CODE_TELEMETRY_ENABLED=false`, or leaving it unset, stops both.
+Relay tracing also stops when `T3CODE_OTEL_SDK_DISABLED` or `OTEL_SDK_DISABLED` turns
+OpenTelemetry export off.
 
 An administrator can turn product events and relay tracing off in the server and desktop app with
 a [managed policy](./managed-policy.md#other-capabilities). This does not control traces sent by
@@ -83,7 +88,7 @@ The desktop app reads `T3CODE_TELEMETRY_ENABLED` from your shell profile (for ex
 Linux, so export it there and restart the app. On Windows, set it as a user environment variable.
 
 A browser opened from a T3 Code server sends relay traces only while connected and allowed by that
-server's policy. The hosted web app sends relay traces when configured and has no tracing toggle.
+server's policy. The hosted web app has no server to allow it, so it sends no relay traces.
 
 ## Mobile app diagnostics
 
@@ -93,20 +98,22 @@ sends startup timings, and every report carries a random ID for the install. Rep
 the T3 Connect relay to Axiom. They do not include your threads, prompts, or connection details,
 but an error message can quote a value the app was handling.
 
-To stop sending them, turn off **Send crash reports** in **Settings > About T3 Code > Diagnostics**.
+Crash reports are off until you turn on **Send crash reports** in
+**Settings > About T3 Code > Diagnostics**.
 
 The mobile app also sends relay connection traces when its build has tracing configured. These
-carry an identifier for the current app session. To stop them, turn off **Send connection traces**
-in **Settings > About T3 Code > Diagnostics**, or on the T3 Connect setup sheet shown after you
-sign in. This is separate from crash reports. Server environment variables and managed policy do
-not disable mobile tracing.
+carry an identifier for the current app session. They are off until you turn on
+**Send connection traces** in **Settings > About T3 Code > Diagnostics**, or on the T3 Connect
+setup sheet shown after you sign in. This is separate from crash reports.
 
 ## Agent activity for mobile notifications
 
 When **Publish agent activity** is enabled on a host, it sends project and thread titles, model
 names, activity status, and environment and thread identifiers to the T3 Connect relay for
 [mobile notifications and live activities](./mobile-notifications.md). This is separate from
-product events and relay diagnostics. The telemetry opt-out does not disable it.
+product events and relay diagnostics, but the telemetry opt-out stops it as well: thread and
+project titles are data about your work, so a host that may not send telemetry does not publish
+them either.
 
 To stop publishing, turn off **Publish agent activity** under **Settings > Sharing & access** on
 the host. Turning off notifications on a phone controls that phone's alerts, not the host's

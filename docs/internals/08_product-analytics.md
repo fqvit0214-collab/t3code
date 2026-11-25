@@ -43,4 +43,16 @@ an authenticated connection does not count as product use.
   UUID per event, backs off on failure, and drops batches after bounded retries so a stuck batch
   cannot loop forever.
 - Dev-runner servers and CI smoke tests disable telemetry (and relay tracing) by default so they do
-  not inflate install counts; set `T3CODE_TELEMETRY_ENABLED=true` to test locally.
+  not inflate install counts; set `T3CODE_TELEMETRY_ENABLED=true` to test locally. Every other
+  install defaults the same way.
+
+## One switch for every channel
+
+[`telemetryConsent.ts`](../../packages/shared/src/telemetryConsent.ts) answers one question for
+each channel that leaves the machine: product events, relay traces, mobile crash reports, and
+agent activity publishing. A managed policy beats the environment, the environment beats a user
+switch, and an unknown answer denies, so a source that has not answered yet cannot leak a batch.
+
+`relayTracing.layer` takes that answer as a **required** parameter. The gate used to be optional,
+and the hosted web app shipped without one for that reason: nothing in the type asked for it. A
+new channel that forgets the switch now fails to compile instead of sending.

@@ -10,12 +10,9 @@ import * as PrimaryEnvironmentHttpLayer from "../environments/primary/httpLayer"
 
 import * as Dpop from "../cloud/dpop";
 import * as ManagedRelayLayer from "../cloud/managedRelayLayer";
-import {
-  relayTelemetryEnabled,
-  resolveCloudPublicConfig,
-  resolveRelayTracingConfig,
-} from "../cloud/publicConfig";
+import { resolveCloudPublicConfig, resolveRelayTracingConfig } from "../cloud/publicConfig";
 import * as ClientTracer from "../observability/clientTracer";
+import { webTelemetryConsent } from "../observability/consent";
 
 function configuredRelayUrl(): string {
   return resolveCloudPublicConfig().relayUrl ?? "http://relay.invalid";
@@ -31,7 +28,7 @@ const layerRelayTracing = RelayTracing.layer(
     serviceInstanceId: ClientTracer.serviceInstanceId,
     client: typeof window !== "undefined" && window.desktopBridge ? "desktop" : "web",
   },
-  { isEnabled: () => relayTelemetryEnabled() === true },
+  webTelemetryConsent,
 ).pipe(Layer.provide(layerHttpClient));
 
 type RuntimeLayerSource =

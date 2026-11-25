@@ -239,6 +239,10 @@
       "types": "./src/telemetryId.ts",
       "import": "./src/telemetryId.ts"
     },
+    "./telemetryConsent": {
+      "types": "./src/telemetryConsent.ts",
+      "import": "./src/telemetryConsent.ts"
+    },
     "./relayAuth": {
       "types": "./src/relayAuth.ts",
       "import": "./src/relayAuth.ts"
