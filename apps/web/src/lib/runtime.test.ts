@@ -57,11 +57,19 @@ describe("web runtime relay telemetry policy", () => {
       exports: true,
     },
     {
-      // The hosted app is served by no T3 server, so nothing can allow it to send.
-      surface: "hosted app",
+      // The hosted app is served by no T3 server, so only its own switch can allow it.
+      surface: "hosted app before its user opts in",
       desktopBridge: undefined,
       location: new URL("https://app.example.test/"),
+      hostedTraces: false,
       exports: false,
+    },
+    {
+      surface: "hosted app whose user opted in",
+      desktopBridge: undefined,
+      location: new URL("https://app.example.test/"),
+      hostedTraces: true,
+      exports: true,
     },
   ])("applies $surface before the first relay span", async (surface) => {
     const { desktopBridge, exports } = surface;
@@ -73,9 +81,17 @@ describe("web runtime relay telemetry policy", () => {
     vi.stubEnv("VITE_RELAY_OTLP_TRACES_DATASET", "relay-test");
     vi.stubEnv("VITE_RELAY_OTLP_TRACES_TOKEN", "test-token");
     vi.stubEnv("VITE_HOSTED_APP_URL", "https://app.example.test");
+    const storage = new Map<string, string>();
+    if ("hostedTraces" in surface && surface.hostedTraces) {
+      storage.set("t3:hosted-relay-telemetry", "true");
+    }
     vi.stubGlobal("window", {
       desktopBridge,
       location: "location" in surface ? surface.location : undefined,
+      localStorage: {
+        getItem: (key: string) => storage.get(key) ?? null,
+        setItem: (key: string, value: string) => storage.set(key, value),
+      },
     });
     const fetchFn = vi.fn<typeof fetch>(async () => new Response(null, { status: 202 }));
     vi.stubGlobal("fetch", fetchFn);

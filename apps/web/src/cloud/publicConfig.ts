@@ -70,6 +70,25 @@ export function setServerRelayTelemetry(allowed: boolean | null): void {
   serverRelayTelemetry = allowed;
 }
 
+/** The hosted app has no server to answer for it, so this is the only switch it has. */
+const HOSTED_RELAY_TELEMETRY_KEY = "t3:hosted-relay-telemetry";
+
+export function hostedRelayTelemetryEnabled(): boolean {
+  try {
+    return window.localStorage.getItem(HOSTED_RELAY_TELEMETRY_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+export function setHostedRelayTelemetryEnabled(enabled: boolean): void {
+  try {
+    window.localStorage.setItem(HOSTED_RELAY_TELEMETRY_KEY, enabled ? "true" : "false");
+  } catch {
+    // A browser that refuses storage keeps the default, which sends nothing.
+  }
+}
+
 /** `null` means no source answered yet. Callers compare against `true`, so an unknown answer sends nothing. */
 export function relayTelemetryEnabled(): boolean | null {
   if (typeof window === "undefined") return false;
@@ -77,14 +96,18 @@ export function relayTelemetryEnabled(): boolean | null {
     desktopRelayTelemetry ??= window.desktopBridge.getRelayTelemetryEnabled();
     return desktopRelayTelemetry;
   }
-  return serverRelayTelemetry ?? (isHostedStaticApp() ? false : null);
+  return serverRelayTelemetry ?? (isHostedStaticApp() ? hostedRelayTelemetryEnabled() : null);
 }
 
+/**
+ * Only the endpoint. The exporter is built during module initialization, so it cannot read a
+ * switch the user flips later; `TelemetryConsent` gates every span and every send instead, which
+ * makes the switch take effect both ways without a reload.
+ */
 export function resolveRelayTracingConfig() {
-  // The relay exporter is created during module initialization, so this must be synchronous.
-  if (relayTelemetryEnabled() === false) {
-    return null;
-  }
+  // The desktop host answers `null` until it has read the login shell. Asking once here caches
+  // its first real answer, so an unread shell does not cost the first relay span.
+  void relayTelemetryEnabled();
   const { relayTracing } = resolveCloudPublicConfig();
   return relayTracing.tracesUrl && relayTracing.tracesDataset && relayTracing.tracesToken
     ? {

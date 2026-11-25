@@ -88,7 +88,9 @@ The desktop app reads `T3CODE_TELEMETRY_ENABLED` from your shell profile (for ex
 Linux, so export it there and restart the app. On Windows, set it as a user environment variable.
 
 A browser opened from a T3 Code server sends relay traces only while connected and allowed by that
-server's policy. The hosted web app has no server to allow it, so it sends no relay traces.
+server's policy. The hosted web app has no server to allow it, so it sends nothing until you turn
+on **Send connection traces** under **Settings > About T3 Code > Diagnostics**. That switch is kept
+in the browser you set it in, and it takes effect at once, both ways.
 
 ## Mobile app diagnostics
 

@@ -92,6 +92,11 @@ import { DraftInput } from "../ui/draft-input";
 import { Input } from "../ui/input";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
 import { Switch } from "../ui/switch";
+import { isHostedStaticApp } from "../../hostedPairing";
+import {
+  hostedRelayTelemetryEnabled,
+  setHostedRelayTelemetryEnabled,
+} from "../../cloud/publicConfig";
 import { ScopedSwitch } from "./ScopedSwitch";
 import { stackedThreadToast, toastManager } from "../ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
@@ -2531,6 +2536,7 @@ export function AboutSettingsPanel() {
   // The Welcome page sets up this computer, so it needs one.
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   const telemetryOff = managedTelemetryOffMessage(primaryPolicy, messages);
+  const [hostedTraces, setHostedTraces] = useState(hostedRelayTelemetryEnabled);
   return (
     <SettingsPageContainer>
       <SettingsSection id="about" title={gt("App")}>
@@ -2580,6 +2586,27 @@ export function AboutSettingsPanel() {
           />
         )}
       </SettingsSection>
+
+      {isHostedStaticApp() ? (
+        <SettingsSection id="hosted-diagnostics" title={gt("Diagnostics")}>
+          <SettingsRow
+            title={gt("Send connection traces")}
+            description={gt(
+              "Lets T3 Code diagnose connection problems from this browser. Traces carry timings, request paths, and error types, never your threads or prompts. No server answers for the hosted app, so this is off until you turn it on.",
+            )}
+            control={
+              <Switch
+                checked={hostedTraces}
+                onCheckedChange={(checked) => {
+                  setHostedRelayTelemetryEnabled(checked);
+                  setHostedTraces(checked);
+                }}
+                aria-label={gt("Send connection traces")}
+              />
+            }
+          />
+        </SettingsSection>
+      ) : null}
 
       <SettingsSection id="legal" title={gt("Legal")}>
         <SettingsRow
